@@ -3,7 +3,7 @@ import json
 import pandas as pd
 import plotly.graph_objects as go
 
-data = pd.read_excel("../data.xlsx", index_col=0)
+data = pd.read_excel("../year_data.xlsx", index_col=0)
 
 
 def getInvestmentLineChart(invest_type="房地产开发投资额(亿元)", district=None, year_range=(2010, 2020)):

@@ -1,8 +1,28 @@
 import os
 import math
-import pandas
+import pandas as pd
 
-if __name__ == '__main__':
+def extract_year_country_data(src_dir, target_file):
+    dfs = []
+    for file in os.listdir(src_dir):
+        file = os.path.join(src_dir, file)
+        data = pd.read_excel(file, skiprows=1, index_col=0)[:-1]
+        data = data.transpose().reset_index(drop=True).rename(columns={"指标":"年份"})
+        dfs.append(data)
+    df = dfs[0]
+    for e in dfs[1:]:
+        df = df.merge(e)
+    df.insert(0, "地区", "全国")
+    df = df.fillna(0)
+    df["年份"] = [int(e[:-1]) for e in list(df["年份"])]
+    df = df.sort_values("年份")
+
+    print(df)
+    df.to_excel(target_file)
+    return df
+
+
+def extract_year_province_data(src_dir, target_file):
     label = ["地区", "年份"]
     years = list(range(2010, 2021))
     districts = ['北京市', '天津市', '河北省', '山西省', '内蒙古自治区', '辽宁省', '吉林省', '黑龙江省',
@@ -16,12 +36,12 @@ if __name__ == '__main__':
         for year in years:
             dic[district][year] = [district, year]
 
-    for file in os.listdir("./dataset"):
+    for file in os.listdir(src_dir):
 
-        file = "./dataset/%s" % file
-        data = pandas.read_excel(file)
+        file = os.path.join(src_dir, file)
+        data = pd.read_excel(file)
         l = [data[e].tolist() for e in data]
-        # print(l)
+        print(l)
 
         name = l[0][0][3:]
         label.append(name)
@@ -42,7 +62,21 @@ if __name__ == '__main__':
     #     for year in years:
     #         assert len(dic[district][year]) == len(label)
     #         print(district, year, dic[district][year])
-    data = pandas.DataFrame([dic[district][year] for year in years for district in districts],
+    data = pd.DataFrame([dic[district][year] for year in years for district in districts],
                             columns=label, dtype=float)
     print(data)
-    data.to_excel("./data.xlsx")
+    # data.to_excel(target_file)
+    return data
+
+
+if __name__ == '__main__':
+    extract_year_country_data("./dataset/year/country", "./test_data.xlsx")
+
+    p = pd.read_excel("./data.xlsx", index_col=0)
+    c = pd.read_excel("./test_data.xlsx", index_col=0)
+    t = pd.concat([p, c]).reset_index(drop=True)
+
+    print(t)
+    t.to_excel("./year_data.xlsx")
+
+    # print(country_data)
