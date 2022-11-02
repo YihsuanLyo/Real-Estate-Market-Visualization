@@ -16,17 +16,12 @@ def getInvestmentLineChart(invest_type="房地产开发投资额(亿元)", distr
             components.append(go.Scatter(x=t["年份"], y=t[invest_type],
                                          mode="lines", name=e, showlegend=True))
     else:
-        t = data[(year_range[0] <= data["年份"]) &
-                 (data["年份"] <= year_range[1])].groupby("年份", as_index=False)[invest_type].agg(sum)
-        components.append(
-            go.Scatter(
-                x=t["年份"],
-                y=t[invest_type],
-                mode="lines",
-                name="全国",
-                showlegend=True
-            )
-        )
+        t = data[(data["地区"].str.contains("全国"))
+                 & (year_range[0] <= data["年份"])
+                 & (data["年份"] <= year_range[1])]
+        components.append(go.Scatter(x=t["年份"], y=t[invest_type],
+                                     mode="lines", name="全国", showlegend=True))
+
     fig = go.Figure(components)
     fig.update_layout(
         xaxis=dict(dtick=1)
@@ -37,12 +32,15 @@ def getInvestmentLineChart(invest_type="房地产开发投资额(亿元)", distr
 def getChineseMap(name=None, year=None):
     with open(r'./china_geojson/china.json', encoding='utf8') as js:
         geo = json.load(js)
-    t = data[data["年份"] == year]
+    t = data[(data["年份"] == year) & (data["地区"] != "全国")]
+    zmax, zmin = max(data[data["地区"] != "全国"][name]), min(data[data["地区"] != "全国"][name])
     fig = go.Figure()
     fig.add_trace(go.Choroplethmapbox(geojson=geo,
                                       featureidkey="properties.name",
                                       locations=t["地区"],
                                       z=t[name],
+                                      colorscale="OrRd",
+                                      zmax=zmax, zmin=zmin
                                       )
                   )
     fig.update_layout(mapbox_style="carto-positron", mapbox_zoom=3, mapbox_center={"lat": 35.9, "lon": 104.2})

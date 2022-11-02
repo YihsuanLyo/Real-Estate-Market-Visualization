@@ -1,16 +1,48 @@
 import dash
 import dash_bootstrap_components as dbc
 from dash import Input, Output, dcc, html
-from sklearn import datasets
 
 from figure import *
 
-iris_raw = datasets.load_iris()
-iris = pd.DataFrame(iris_raw["data"], columns=iris_raw["feature_names"])
+SIDEBAR_STYLE = {
+    "position": "fixed",
+    "top": 0,
+    "left": 0,
+    "bottom": 0,
+    "width": "16rem",
+    "padding": "2rem 1rem",
+    "background-color": "#f8f9fa",
+}
 
-app = dash.Dash(external_stylesheets=[dbc.themes.BOOTSTRAP])
+CONTENT_STYLE = {
+    "margin-left": "18rem",
+    "margin-right": "2rem",
+    "padding": "2rem 1rem",
+}
 
-scatter_control = dbc.Card([
+app = dash.Dash(external_stylesheets=[dbc.themes.SPACELAB])
+
+sidebar = html.Div(
+    [
+        html.H2("Sidebar", className="display-4"),
+        html.Hr(),
+        html.P(
+            "A simple sidebar layout with navigation links", className="lead"
+        ),
+        dbc.Nav(
+            [
+                dbc.NavLink("Home", href="/", active="exact"),
+                dbc.NavLink("Page 1", href="/page-1", active="exact"),
+                dbc.NavLink("Page 2", href="/page-2", active="exact"),
+            ],
+            vertical=True,
+            pills=True,
+        ),
+    ],
+    style=SIDEBAR_STYLE,
+)
+
+control = dbc.Card([
     html.Div([
         dbc.Label("Invest Type"),
         dcc.Dropdown(
@@ -52,27 +84,34 @@ scatter_control = dbc.Card([
     body=True,
 )
 
-app.layout = dbc.Container(
-    [
-        html.H1("Chinese Real Estate Investment"),
-        html.Hr(),
-        dbc.Row(
-            [
-                dbc.Col(scatter_control, md=4),
-                dbc.Col(dcc.Graph(id="scatter-graph"), md=8),
-            ],
-            align="center",
-        ),
-        dbc.Row(
-            [
-                dbc.Col(dcc.Graph(id="pie-graph"), md=4),
-                dbc.Col(dcc.Graph(id="map-graph"), md=8),
-            ],
-            align="center",
-        ),
-    ],
+children = [
+    html.H1("Chinese Real Estate Investment"),
+    html.Hr(),
+    dbc.Row(
+        [
+            dbc.Col(control, md=4),
+            dbc.Col(dcc.Graph(id="scatter-graph"), md=8),
+        ],
+        align="center",
+    ),
+    dbc.Row(
+        [
+            dbc.Col(dcc.Graph(id="pie-graph"), md=4),
+            dbc.Col(dcc.Graph(id="map-graph"), md=8),
+        ],
+        align="center",
+    ),
+]
+
+container = dbc.Container(
+    children=children,
+    id="container",
     fluid=True,
 )
+
+content = html.Div([container], id="page-content", style=CONTENT_STYLE)
+
+app.layout = html.Div([dcc.Location(id="url"), sidebar, content])
 
 
 @app.callback(
@@ -86,6 +125,7 @@ app.layout = dbc.Container(
 def make_scatter_graph(invest_type, district, year_range):
     return getInvestmentLineChart(invest_type, district, year_range)
 
+
 @app.callback(
     Output("map-graph", "figure"),
     [
@@ -96,6 +136,7 @@ def make_scatter_graph(invest_type, district, year_range):
 def make_map_graph(map_type, map_year):
     return getChineseMap(map_type, map_year)
 
+
 @app.callback(
     Output("pie-graph", "figure"),
     [
@@ -105,6 +146,18 @@ def make_map_graph(map_type, map_year):
 )
 def make_pie_graph(districts, year):
     return getInvestPieChart(districts, year)
+
+
+@app.callback(Output("container", "children"), [Input("url", "pathname")])
+def render_page_content(pathname):
+    if pathname == "/":
+        return children
+    else:
+        return [
+            html.H1("Chinese Real Estate Investment"),
+            html.Hr(),
+            html.H3("Here is %s!" % pathname)
+        ]
 
 
 if __name__ == "__main__":
