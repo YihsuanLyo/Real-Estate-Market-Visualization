@@ -205,10 +205,10 @@ class DevelopmentPage():
                 "集体房地产开发企业平均从业人数(人)"
             ],
             "房地产开发企业总收入(亿元)": ["房地产开发企业主营业务收入(亿元)",
-                               "房地产开发企业土地转让收入(亿元)",
-                               "房地产开发企业商品房销售收入(亿元)",
-                               "房地产开发企业房屋出租收入(亿元)",
-                               "房地产开发企业其他收入(亿元)"]
+                                           "房地产开发企业土地转让收入(亿元)",
+                                           "房地产开发企业商品房销售收入(亿元)",
+                                           "房地产开发企业房屋出租收入(亿元)",
+                                           "房地产开发企业其他收入(亿元)"]
         }
 
     def getLineChart(self, district="全国", name=""):
@@ -489,8 +489,186 @@ class SalePage():
         return fig
 
 
-if __name__ == '__main__':
-    print("\"", "\",\n\"".join(e[5:] for e in data.keys() if "住宅商品房" in e), "\"", sep="")
+class InvestmentPage():
+    def __init__(self):
+        self.keys = {
+            "资金来源": [
+                "房地产开发企业国内贷款(亿元)",
+                "房地产开发企业自筹资金(亿元)",
+                "房地产开发企业利用外资(亿元)",
+                "房地产开发企业其他资金来源(亿元)",
+            ],
+            "资金用途": [
+                "房地产开发企业建筑安装工程本年完成投资额(亿元)",
+                "房地产开发企业设备工器具购置本年完成投资额(亿元)",
+                "房地产开发企业其他费用本年完成投资额(亿元)",
+            ],
+            "建筑类型": [
+                "房地产开发住宅投资额(亿元)",
+                "房地产开发别墅、高档公寓投资额(亿元)",
+                "房地产开发办公楼投资额(亿元)",
+                "房地产开发商业营业用房投资额(亿元)",
+                "房地产开发其他投资额(亿元)",
+            ],
+            "项目规模": [
+                "500万元以下房地产开发投资额(亿元)",
+                "500-1000万元房地产开发投资额(亿元)",
+                "1000-3000万元房地产开发投资额(亿元)",
+                "3000-5000万元房地产开发投资额(亿元)",
+                "5000万-1亿元房地产开发投资额(亿元)",
+                "1-5亿元房地产开发投资额(亿元)",
+                "5-10亿元房地产开发投资额(亿元)",
+                "10亿元以上房地产开发投资额(亿元)"
+            ],
+            "房地产开发企业新开工房屋面积(万平方米)": [
+                "房地产开发企业住宅新开工房屋面积(万平方米)",
+                "房地产开发企业别墅、高档公寓新开工房屋面积(万平方米)",
+                "房地产开发企业办公楼新开工房屋面积(万平方米)",
+                "房地产开发企业商业营业用房新开工房屋面积(万平方米)",
+                "房地产开发企业其他用途新开工房屋面积(万平方米)"
+            ]
+        }
 
-    page = SalePage()
-    page.getGeoMap().show()
+    def getBarChartWithLine(self, x, y1, y2, ly, y1_name, y2_name, line_name, district=None):
+        fig = go.Figure()
+        fig.add_trace(go.Bar(
+            x=x,
+            y=y1,
+            name=y1_name,
+            xaxis="x", yaxis="y1"
+        ))
+        fig.add_trace(go.Bar(
+            x=x,
+            y=y2,
+            name=y2_name,
+            xaxis="x", yaxis="y1"
+        ))
+        fig.add_trace(go.Scatter(
+            x=x,
+            y=ly,
+            mode="lines+markers",
+            xaxis="x", yaxis="y2",
+            name=line_name
+        ))
+
+        fig.update_layout(
+            barmode="group",
+            yaxis2=dict(anchor="x", overlaying="y", side="right", range=[0, 1]),
+            xaxis=dict(dtick=1),
+            legend=dict(
+                yanchor="top",
+                y=0.99,
+                xanchor="left",
+                x=0.01
+            ),
+            **general_style
+        )
+
+        return fig
+
+    def getInvestmentPlanChart(self, district=None):
+        if not district:
+            district = "全国"
+        t = data[data["地区"] == district]
+
+        x, y1, y2 = t["年份"], t["房地产开发企业计划总投资(亿元)"], t[
+            "房地产开发企业自开始建设至本年底累计完成投资(亿元)"]
+        return self.getBarChartWithLine(
+            x, y1, y2, y2 / y1,
+            "房地产开发企业计划总投资(亿元)", "房地产开发企业已完成投资(亿元)", "房地产开发企业已完成投资占比(%)",
+            district
+        )
+
+    def getConstructingAreaChart(self, district=None):
+        if not district:
+            district = "全国"
+        t = data[data["地区"] == district]
+
+        x, y1, y2 = t["年份"], t["房地产开发企业施工房屋面积(万平方米)"], t["房地产开发企业竣工房屋面积(万平方米)"]
+        return self.getBarChartWithLine(
+            x, y1, y2, y2 / y1,
+            "房地产开发企业施工房屋面积(万平方米)", "房地产开发企业竣工房屋面积(万平方米)",
+            "房地产开发企业房屋建筑面积竣工率(%)",
+            district
+        )
+
+    def getConstructingValueChart(self, district=None):
+        if not district:
+            district = "全国"
+        t = data[data["地区"] == district]
+
+        x, y1 = t["年份"], t["房地产开发企业竣工房屋价值(亿元)"]
+        y2 = t["房地产开发企业竣工房屋造价(元/平方米)"] * t["房地产开发企业竣工房屋面积(万平方米)"] / 10000
+        return self.getBarChartWithLine(
+            x, y1, y2, (y1 - y2) / y2,
+            "房地产开发企业竣工房屋价值(亿元)", "房地产开发企业竣工房屋造价(元/平方米)",
+            "房地产开发企业竣工房屋增值占比(%)",
+            district
+        )
+
+    def getInvestmentTreemap(self, district=None, year=2015):
+        if not district:
+            district = "全国"
+        t = data[(data["地区"].str.contains(district)) & (data["年份"] == year)]
+
+        labels, parents, values = ["资金来源", "资金用途"], ["", ""], [0, 0]
+        for e in ["资金来源", "资金用途"]:
+            labels += self.keys[e]
+            parents += [e] * len(self.keys[e])
+            values += [v for l in self.keys[e] for v in t[l]]
+
+        fig = go.Figure(go.Treemap(labels=labels, parents=parents, values=values, ))
+        fig.update_layout(**general_style)
+        return fig
+
+    def getInvestmentTable(self, year=2020, district=None, name="项目规模"):
+        if not district:
+            district = "全国"
+        assert name in ["项目规模", "建筑类型"]
+
+        t = data[(data["地区"] == district) & (data["年份"] == year)]
+
+        keys = self.keys[name]
+        values = [v for key in keys for v in t[key]]
+
+        percentages = []
+        for e in values:
+            e = e * 100 / sum(values)
+            percentages.append(round(e, 2))
+            i = 3
+            while not percentages[-1]:
+                percentages[-1] += round(e, i)
+                i += 1
+
+        fig = go.Figure(go.Table(
+            header=dict(values=[name, "投资额", "占比"]),
+            cells=dict(values=[keys, values, percentages]),
+        ))
+        fig.update_layout(**general_style)
+        return fig
+
+    def getNewConstructionPie(self, year=2020, district=None):
+        if not district:
+            district = "全国"
+
+        keys = self.keys["房地产开发企业新开工房屋面积(万平方米)"]
+        t = data[(data["地区"] == district) & (data["年份"] == year)]
+
+        labels = [e for e in keys]
+        values = [v for e in keys for v in t[e]]
+        fig = go.Figure()
+        fig.add_trace(go.Pie(labels=labels, values=values, showlegend=False))
+        fig.update_layout(
+            margin=general_style["margin"],
+            # width=200, height=200,
+            # paper_bgcolor='rgba(0,0,0,0)',
+            # plot_bgcolor='rgba(0,0,0,0)'
+        )
+        return fig
+
+
+if __name__ == '__main__':
+    print("\"", "\",\n\"".join(e for e in data.keys() if "面积" in e), "\"", sep="")
+
+    page = InvestmentPage()
+    page.getNewConstructionPie().show()
