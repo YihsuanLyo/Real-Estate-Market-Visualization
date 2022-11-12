@@ -7,6 +7,11 @@ from plotly.subplots import make_subplots
 data = pd.read_excel("../year_data.xlsx", index_col=0)
 general_style = dict(margin=dict(l=2, r=2, t=2, b=2), autosize=True)
 
+def allDistricts():
+    districts = set(data["地区"])
+    districts.remove("全国")
+    return list(districts)
+
 keys = {
     "房地产开发企业个数(个)": [
         "内资房地产开发企业个数(个)",
@@ -211,47 +216,51 @@ class DevelopmentPage():
                                            "房地产开发企业其他收入(亿元)"]
         }
 
-    def getLineChart(self, district="全国", name=""):
+    def getLineChart(self, district="全国", names=None):
+        if not names:
+            names = [""]
         t = data[data["地区"].str.contains(district)]
         fig = go.Figure()
 
-        fig.add_trace(go.Scatter(x=t["年份"], y=t[name + "房地产开发企业个数(个)"],
+        fig.add_trace(go.Scatter(x=t["年份"],
+                                 y=t[[name + "房地产开发企业个数(个)" for name in names]].sum(axis=1),
                                  mode="lines+markers",
-                                 name=name + "房地产开发企业个数(个)",
+                                 name="房地产开发企业个数(个)",
                                  showlegend=True,
                                  xaxis="x", yaxis="y1"))
-        fig.add_trace(go.Scatter(x=t["年份"], y=t[name + "房地产开发企业平均从业人数(人)"],
-                                 name=name + "房地产开发企业平均从业人数(人)",
+        fig.add_trace(go.Scatter(x=t["年份"],
+                                 y=t[[name + "房地产开发企业平均从业人数(人)" for name in names]].sum(axis=1),
+                                 name="房地产开发企业平均从业人数(人)",
                                  showlegend=True, mode="lines+markers",
                                  xaxis="x", yaxis="y2"))
         fig.update_layout(
             yaxis2=dict(anchor="x", overlaying="y", side="right"),
             xaxis=dict(dtick=1),
             legend=dict(
-                yanchor="top",
-                y=0.99,
-                xanchor="left",
-                x=0.01
+                orientation="h",
+                yanchor="bottom",
+                y=-0.12,
+                xanchor="right",
+                x=1
             ),
             **general_style
         )
         return fig
 
-    def getBarChart(self, year=2020, building_type=None, name="房地产开发企业个数(个)", descending=False):
+    def getBarChart(self, year=2020, building_types=None, name="房地产开发企业个数(个)", descending=False):
         assert name in ["房地产开发企业个数(个)", "房地产开发企业平均从业人数(人)"]
-        if not building_type:
-            building_type = [""]
+        if not building_types:
+            building_types = [""]
 
         colors_dict = {"": "lightblue", "内资": "blue", "国有": "red",
                        "集体": "lightgreen", "港、澳、台投资": "purple", "外商投资": "orange"}
 
-        keys = [e + name for e in building_type]
+        keys = [e + name for e in building_types]
         fig = go.Figure()
         t = data[(data["年份"] == year) & (data["地区"] != "全国")]
         t.insert(1, "sum", t[keys].sum(axis=1), allow_duplicates=False)
         t = t.sort_values(["sum", "地区"], ascending=descending)
         for key in keys:
-            print(t["地区"])
             fig.add_trace(go.Bar(x=t[key][len(t[key]) // 2:],
                                  y=[convertProvince(e) for e in t["地区"][len(t[key]) // 2:]],
                                  orientation="h",
@@ -363,14 +372,12 @@ class SalePage():
         if not building_types:
             building_types = ["商品房"]
         keys = [e + name for e in building_types]
-        print(keys)
 
         t = data[data["地区"] != "全国"]
         t.insert(1, "sum", t[keys].sum(axis=1), allow_duplicates=False)
         zmax, zmin = max(t["sum"]), min(t["sum"])
         t = t[t["年份"] == year]
 
-        print(t[["地区", "sum"]])
         fig = go.Figure()
         fig.add_trace(go.Choroplethmapbox(geojson=self.geoInfo,
                                           featureidkey="properties.name",
@@ -380,8 +387,12 @@ class SalePage():
                                           zmax=zmax, zmin=zmin
                                           )
                       )
-        fig.update_layout(mapbox_style="carto-positron", mapbox_zoom=3, mapbox_center={"lat": 35.9, "lon": 104.2})
-        fig.update_layout(**general_style)
+        fig.update_layout(
+            mapbox_style="carto-positron",
+            mapbox_zoom=2.6,
+            mapbox_center={"lat": 35.9, "lon": 104.2},
+            **general_style
+        )
         return fig
 
     def getStackedChart(self, name="销售面积(万平方米)", building_types=None, district=None):
@@ -397,16 +408,21 @@ class SalePage():
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=t["年份"], y=accumulate,
                                  name=building_types[0], showlegend=True,
-                                 mode="lines", fill="tozeroy", ))
+                                 mode="none", fill="tozeroy", ))
 
         for building_type in building_types[1:]:
             accumulate += t[building_type + name]
             fig.add_trace(go.Scatter(x=t["年份"], y=accumulate,
                                      name=building_type, showlegend=True,
-                                     mode="lines", fill="tonexty", ))
+                                     mode="none", fill="tonexty", ))
+
+        t = data[data["地区"] == "全国"] if district == "全国" else data[data["地区"] != "全国"]
+        accumulate = t[[e + name for e in building_types]].sum(axis=1)
+        ymax = max(accumulate)
 
         fig.update_layout(
             xaxis=dict(dtick=1),
+            yaxis=dict(range=[0, ymax]),
             legend=dict(
                 yanchor="top",
                 y=0.99,
@@ -417,9 +433,8 @@ class SalePage():
         )
         return fig
 
-    def getTable(self, districts=None, building_type=None):
-        if not districts:
-            districts = ["全国"]
+    def getAveragePriceTable(self, districts=None, building_type=None):
+        districts = ["全国"] + districts if districts else ["全国"]
         if not building_type:
             building_type = "商品房"
         assert building_type == "商品房" or building_type in self.keys["商品房"]
@@ -427,13 +442,33 @@ class SalePage():
         years = data[data["地区"] == districts[0]]["年份"]
 
         fig = go.Figure(go.Table(
-            header=dict(values=["年份"] + districts),
+            header=dict(values=["年份"] + [convertProvince(e) for e in districts]),
             cells=dict(values=[years] + [data[data["地区"] == district][building_type + "平均销售价格(元/平方米)"]
-                                         for district in districts])
+                                         for district in districts]),
         ))
 
-        fig.update_layout(**general_style)
+        fig.update_layout(
+            title="平均销售价格(元/平方米)",
+            # **general_style
+        )
         return fig
+
+    def getAveragePriceBar(self, districts=None, building_type=None):
+        districts = ["全国"] + districts if districts else ["全国"]
+        if not building_type:
+            building_type = "商品房"
+        assert building_type == "商品房" or building_type in self.keys["商品房"]
+
+        fig = go.Figure()
+        for district in districts:
+            t = data[data["地区"] == district]
+            fig.add_trace(go.Bar(x=t["年份"], y=t[building_type + "平均销售价格(元/平方米)"], name=district))
+        fig.update_layout(
+            barmode="group",
+            **general_style
+        )
+        return fig
+
 
     def getScatterChart(self, name="住宅"):
         assert name in self.keys["竣工与销售"]
@@ -668,7 +703,7 @@ class InvestmentPage():
 
 
 if __name__ == '__main__':
-    print("\"", "\",\n\"".join(e for e in data.keys() if "面积" in e), "\"", sep="")
+    print("\"", "\",\n\"".join(e for e in data.keys() if "销售面积" in e), "\"", sep="")
 
-    page = InvestmentPage()
-    page.getNewConstructionPie().show()
+    page = SalePage()
+    page.getAveragePriceBar().show()
