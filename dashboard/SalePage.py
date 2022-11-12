@@ -4,25 +4,25 @@ from dash import dcc, Input, Output
 
 from figure import *
 
-building_types = ["商品房", "住宅商品房", "别墅、高档公寓", "办公楼商品房", "商业营业用房", "其他商品房"]
-
 app = dash.Dash(external_stylesheets=[dbc.themes.SPACELAB])
 
 salePage = SalePage()
+building_types = salePage.keys["商品房"]
 
 app.layout = dbc.Container([
-    dbc.Container(
-        dbc.Row([
-            dbc.Col([
+    dbc.Row(
+        dbc.Card([
+            dbc.CardHeader("销售额与销售面积"),
+            dbc.CardBody([
                 dbc.Row([
                     dbc.Col(
                         dcc.Dropdown(
                             options=["销售面积(万平方米)", "销售额(亿元)"],
                             value="销售额(亿元)",
                             id="DataType",
-                            clearable=False
+                            clearable=False,
                         ),
-                        width=4
+                        width=3
                     ),
                     dbc.Col(
                         dcc.Slider(
@@ -31,59 +31,78 @@ app.layout = dbc.Container([
                             max=2020,
                             step=1,
                             value=2010,
-                            marks=dict(zip(list(range(2010, 2021, 2)), [str(e) for e in range(2010, 2021, 2)]))
+                            marks=dict(zip(list(range(2010, 2021, 2)),
+                                           [str(e) for e in range(2010, 2021, 2)])),
+                            included=False
                         ),
-                        width=8
-                    )
-                ]),
-                dbc.Row(
-                    dcc.Dropdown(
-                        options=building_types[1:],
-                        placeholder="商品房",
-                        id="BuildingTypes",
-                        multi=True
+                        width=3
                     ),
+                    dbc.Col(
+                        dcc.Dropdown(
+                            options=building_types,
+                            placeholder="商品房",
+                            id="BuildingTypes",
+                            multi=True
+                        ),
+                        width=6
+                    )
 
-                ),
-                dbc.Row(
-                    dcc.Graph(id="ChineseMap", figure=salePage.getGeoMap()),
-                )
-            ],
-                width=6),
-            dbc.Col(dcc.Graph(id="StackedChart", figure=salePage.getStackedChart()), width=6),
-        ]),
-        # style={"height": "30vh"},
-    ),
-
-    dbc.Container(
-        dbc.Row([
-            dbc.Col([
+                ]),
                 dbc.Row([
                     dbc.Col(
-                        dcc.Dropdown(
-                            options=allDistricts(),
-                            placeholder="全国",
-                            id="SelectedDistricts",
-                            multi=True
-                        ), width=6
+                        dcc.Graph(id="ChineseMap", figure=salePage.getGeoMap()),
+                        width=6
                     ),
                     dbc.Col(
-                        dcc.Dropdown(
-                            options=["商品房"] + salePage.keys["商品房"],
-                            value="商品房",
-                            id="AverageBuildingType",
-                            clearable=False
-                        ), width=6
+                        dcc.Graph(id="StackedChart", figure=salePage.getStackedChart()),
+                        width=6
                     )
-                ]),
-                dbc.Row(
-                    dcc.Graph(id="AveragePriceChart", figure=salePage.getAveragePriceTable())
-                ),
-            ], width=6),
-            dbc.Col(dcc.Graph(id="ScatterChart", figure=salePage.getScatterChart()), width=6),
-        ]),
-        # style={"height": "30vh"},
+                ])
+            ])
+        ])
     ),
+    dbc.Row([
+        dbc.Col(
+            dbc.Card([
+                dbc.CardHeader("平均销售价格"),
+                dbc.CardBody([
+                    dbc.Row([
+                        dbc.Col(
+                            dcc.Dropdown(
+                                options=allDistricts(),
+                                placeholder="全国",
+                                id="SelectedDistricts",
+                                multi=True
+                            ), width=8
+                        ),
+                        dbc.Col(
+                            dcc.Dropdown(
+                                options=["商品房"] + salePage.keys["商品房"],
+                                value="商品房",
+                                id="AverageBuildingType",
+                                clearable=False
+                            ), width=4
+                        )
+                    ]),
+                    dbc.Row(
+                        dcc.Graph(id="AveragePriceChart", figure=salePage.getAveragePriceTable())
+                    ),
+                ])
+            ]),
+            width=6
+        ),
+        dbc.Col(
+            dbc.Card([
+                dbc.CardHeader("2010-2020各省份房屋竣工套数与销售套数关系"),
+                dbc.CardBody(
+                    dbc.Row(
+                        dcc.Graph(id="ScatterChart", figure=salePage.getScatterChart())
+                    ),
+                )
+            ]),
+            width=6
+        )
+    ]),
 
 ])
 

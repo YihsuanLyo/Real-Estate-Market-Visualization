@@ -7,10 +7,12 @@ from plotly.subplots import make_subplots
 data = pd.read_excel("../year_data.xlsx", index_col=0)
 general_style = dict(margin=dict(l=2, r=2, t=2, b=2), autosize=True)
 
+
 def allDistricts():
     districts = set(data["地区"])
     districts.remove("全国")
     return list(districts)
+
 
 keys = {
     "房地产开发企业个数(个)": [
@@ -209,12 +211,17 @@ class DevelopmentPage():
                 "国有房地产开发企业平均从业人数(人)",
                 "集体房地产开发企业平均从业人数(人)"
             ],
-            "房地产开发企业总收入(亿元)": ["房地产开发企业主营业务收入(亿元)",
-                                           "房地产开发企业土地转让收入(亿元)",
-                                           "房地产开发企业商品房销售收入(亿元)",
-                                           "房地产开发企业房屋出租收入(亿元)",
-                                           "房地产开发企业其他收入(亿元)"]
+            "房地产开发企业总收入(亿元)": [
+                "房地产开发企业主营业务收入(亿元)",
+                "房地产开发企业土地转让收入(亿元)",
+                "房地产开发企业商品房销售收入(亿元)",
+                "房地产开发企业房屋出租收入(亿元)",
+                "房地产开发企业其他收入(亿元)"
+            ]
         }
+
+        self.colors_dict = {"": "blue", "内资": "lightblue", "国有": "red",
+                            "集体": "lightgreen", "港、澳、台投资": "purple", "外商投资": "orange"}
 
     def getLineChart(self, district="全国", names=None):
         if not names:
@@ -234,15 +241,16 @@ class DevelopmentPage():
                                  showlegend=True, mode="lines+markers",
                                  xaxis="x", yaxis="y2"))
         fig.update_layout(
+            xaxis=dict(title="Year"),
             yaxis2=dict(anchor="x", overlaying="y", side="right"),
-            xaxis=dict(dtick=1),
             legend=dict(
                 orientation="h",
-                yanchor="bottom",
-                y=-0.12,
+                yanchor="top",
+                y=-0.18,
                 xanchor="right",
                 x=1
             ),
+            height=300,
             **general_style
         )
         return fig
@@ -251,9 +259,6 @@ class DevelopmentPage():
         assert name in ["房地产开发企业个数(个)", "房地产开发企业平均从业人数(人)"]
         if not building_types:
             building_types = [""]
-
-        colors_dict = {"": "lightblue", "内资": "blue", "国有": "red",
-                       "集体": "lightgreen", "港、澳、台投资": "purple", "外商投资": "orange"}
 
         keys = [e + name for e in building_types]
         fig = go.Figure()
@@ -264,19 +269,51 @@ class DevelopmentPage():
             fig.add_trace(go.Bar(x=t[key][len(t[key]) // 2:],
                                  y=[convertProvince(e) for e in t["地区"][len(t[key]) // 2:]],
                                  orientation="h",
-                                 name=key[:key.index("房")],
-                                 marker_color=colors_dict[key[:-len(name)]]))
+                                 name=key[:key.index("房")] if key.index("房") else "总计",
+                                 marker_color=self.colors_dict[key[:-len(name)]],
+                                 showlegend=True
+                                 ))
 
         fig.update_layout(
             barmode="stack",
             xaxis=dict(range=[0, 1.1 * max(t["sum"])]),
+            legend=dict(
+                orientation="h",
+                yanchor="top",
+                y=-0.18,
+                xanchor="right",
+                x=1
+            ),
+            height=300,
             **general_style
         )
 
         return fig
 
+    def getPieChart(self, district="全国", year=2020, name="房地产开发企业个数(个)"):
+        assert name in self.keys
+        if not district:
+            district = "全国"
+        if not year:
+            year = 2020
+        keys = self.keys[name]
+        t = data[(data["地区"].str.contains(district)) & (data["年份"] == year)]
+
+        labels = [e[:e.index("房")] for e in keys]
+        values = [v for e in keys for v in t[e]]
+        fig = go.Figure()
+        fig.add_trace(go.Pie(labels=labels, values=values, showlegend=False,
+                             hole=0.3, sort=False))
+        fig.update_traces(marker=dict(colors=[self.colors_dict[e] for e in labels]),
+                          hoverinfo='label+percent', textinfo="label")
+        fig.update_layout(
+            height=300,
+            **general_style
+        )
+        return fig
+
     def getStackedChart(self, district="全国"):
-        t = data[data["地区"].str.contains(district)]
+        t = data[data["地区"] == district]
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=t["年份"], y=t["房地产开发企业负债合计(亿元)"],
                                  name="房地产开发企业负债合计(亿元)", showlegend=True,
@@ -292,7 +329,7 @@ class DevelopmentPage():
                                  xaxis="x", yaxis="y2"))
         fig.update_layout(
             xaxis=dict(dtick=1),
-            # yaxis1=dict(range=[]),
+            yaxis1=dict(range=[0, 144000 if district != "全国" else 1200000]),
             yaxis2=dict(anchor="x", overlaying="y", side="right", range=[0, 1]),
             legend=dict(
                 yanchor="top",
@@ -300,24 +337,7 @@ class DevelopmentPage():
                 xanchor="left",
                 x=0.01
             ),
-            **general_style
-        )
-        return fig
-
-    def getPieChart(self, district="全国", year=2020, name="房地产开发企业个数(个)"):
-        assert name in self.keys
-        if not district:
-            district = "全国"
-        if not year:
-            year = 2020
-        keys = self.keys[name]
-        t = data[(data["地区"].str.contains(district)) & (data["年份"] == year)]
-
-        labels = [e for e in keys]
-        values = [v for e in keys for v in t[e]]
-        fig = go.Figure()
-        fig.add_trace(go.Pie(labels=labels, values=values, showlegend=True, hole=0.3))
-        fig.update_layout(
+            height=300,
             **general_style
         )
         return fig
@@ -343,7 +363,10 @@ class DevelopmentPage():
                                                  sizeref=5,
                                                  sizemin=1, )
                                      ))
-        fig.update_layout(**general_style)
+        fig.update_layout(
+            yaxis=dict(range=[-0.06, 0.21]),
+            **general_style
+        )
         return fig
 
 
@@ -353,7 +376,7 @@ class SalePage():
             "商品房": [
                 "住宅商品房",
                 "别墅、高档公寓",
-                "办公楼商品房",
+                "办公楼",
                 "商业营业用房",
                 "其他商品房"
             ],
@@ -364,6 +387,9 @@ class SalePage():
             ],
             "竣工与销售": ["住宅", "别墅、高档公寓"]
         }
+        self.color_dict = dict(zip(self.keys["商品房"],
+                                   ["lightblue", "lightgrey", "lightgreen", "lightyellow", "lightsalmon"]))
+        self.color_dict["商品房"] = "blue"
         with open(r'./china_geojson/china.json', encoding='utf8') as js:
             self.geoInfo = json.load(js)
 
@@ -408,13 +434,15 @@ class SalePage():
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=t["年份"], y=accumulate,
                                  name=building_types[0], showlegend=True,
-                                 mode="none", fill="tozeroy", ))
+                                 mode="none", fill="tozeroy",
+                                 fillcolor=self.color_dict[building_types[0]]))
 
         for building_type in building_types[1:]:
             accumulate += t[building_type + name]
             fig.add_trace(go.Scatter(x=t["年份"], y=accumulate,
                                      name=building_type, showlegend=True,
-                                     mode="none", fill="tonexty", ))
+                                     mode="none", fill="tonexty",
+                                     fillcolor=self.color_dict[building_type]))
 
         t = data[data["地区"] == "全国"] if district == "全国" else data[data["地区"] != "全国"]
         accumulate = t[[e + name for e in building_types]].sum(axis=1)
@@ -427,7 +455,7 @@ class SalePage():
                 yanchor="top",
                 y=0.99,
                 xanchor="left",
-                x=0.01
+                x=0.01,
             ),
             **general_style
         )
@@ -468,7 +496,6 @@ class SalePage():
             **general_style
         )
         return fig
-
 
     def getScatterChart(self, name="住宅"):
         assert name in self.keys["竣工与销售"]
@@ -519,6 +546,8 @@ class SalePage():
             )
 
         fig.update_layout(
+            xaxis=dict(title="房地产开发企业%s销售套数(套)" % name),
+            yaxis=dict(title="房地产开发企业%s竣工套数(套)" % name),
             **general_style,
         )
         return fig
@@ -557,14 +586,13 @@ class InvestmentPage():
             ],
             "房地产开发企业新开工房屋面积(万平方米)": [
                 "房地产开发企业住宅新开工房屋面积(万平方米)",
-                "房地产开发企业别墅、高档公寓新开工房屋面积(万平方米)",
                 "房地产开发企业办公楼新开工房屋面积(万平方米)",
                 "房地产开发企业商业营业用房新开工房屋面积(万平方米)",
                 "房地产开发企业其他用途新开工房屋面积(万平方米)"
             ]
         }
 
-    def getBarChartWithLine(self, x, y1, y2, ly, y1_name, y2_name, line_name, district=None):
+    def getBarChartWithLine(self, x, y1, y2, ly, y1_name, y2_name, line_name):
         fig = go.Figure()
         fig.add_trace(go.Bar(
             x=x,
@@ -588,7 +616,6 @@ class InvestmentPage():
 
         fig.update_layout(
             barmode="group",
-            yaxis2=dict(anchor="x", overlaying="y", side="right", range=[0, 1]),
             xaxis=dict(dtick=1),
             legend=dict(
                 yanchor="top",
@@ -608,11 +635,14 @@ class InvestmentPage():
 
         x, y1, y2 = t["年份"], t["房地产开发企业计划总投资(亿元)"], t[
             "房地产开发企业自开始建设至本年底累计完成投资(亿元)"]
-        return self.getBarChartWithLine(
+        fig = self.getBarChartWithLine(
             x, y1, y2, y2 / y1,
             "房地产开发企业计划总投资(亿元)", "房地产开发企业已完成投资(亿元)", "房地产开发企业已完成投资占比(%)",
-            district
         )
+        fig.update_layout(
+            yaxis2=dict(anchor="x", overlaying="y", side="right", range=[0, 1]),
+            height=400)
+        return fig
 
     def getConstructingAreaChart(self, district=None):
         if not district:
@@ -620,12 +650,16 @@ class InvestmentPage():
         t = data[data["地区"] == district]
 
         x, y1, y2 = t["年份"], t["房地产开发企业施工房屋面积(万平方米)"], t["房地产开发企业竣工房屋面积(万平方米)"]
-        return self.getBarChartWithLine(
+        fig = self.getBarChartWithLine(
             x, y1, y2, y2 / y1,
             "房地产开发企业施工房屋面积(万平方米)", "房地产开发企业竣工房屋面积(万平方米)",
             "房地产开发企业房屋建筑面积竣工率(%)",
-            district
         )
+        fig.update_layout(
+            height=300,
+            yaxis2=dict(anchor="x", overlaying="y", side="right", range=[0, 1]),
+        )
+        return fig
 
     def getConstructingValueChart(self, district=None):
         if not district:
@@ -634,20 +668,25 @@ class InvestmentPage():
 
         x, y1 = t["年份"], t["房地产开发企业竣工房屋价值(亿元)"]
         y2 = t["房地产开发企业竣工房屋造价(元/平方米)"] * t["房地产开发企业竣工房屋面积(万平方米)"] / 10000
-        return self.getBarChartWithLine(
+        fig = self.getBarChartWithLine(
             x, y1, y2, (y1 - y2) / y2,
             "房地产开发企业竣工房屋价值(亿元)", "房地产开发企业竣工房屋造价(元/平方米)",
             "房地产开发企业竣工房屋增值占比(%)",
-            district
         )
+        fig.update_layout(
+            yaxis2=dict(anchor="x", overlaying="y", side="right"),
+            height=300,
+        )
+        return fig
 
     def getInvestmentTreemap(self, district=None, year=2015):
         if not district:
             district = "全国"
         t = data[(data["地区"].str.contains(district)) & (data["年份"] == year)]
 
-        labels, parents, values = ["资金来源", "资金用途"], ["", ""], [0, 0]
-        for e in ["资金来源", "资金用途"]:
+        categories = ["资金来源", "资金用途", "建筑类型", "项目规模"]
+        labels, parents, values = categories.copy(), [""] * len(categories), [0] * len(categories)
+        for e in categories:
             labels += self.keys[e]
             parents += [e] * len(self.keys[e])
             values += [v for l in self.keys[e] for v in t[l]]
@@ -656,10 +695,31 @@ class InvestmentPage():
         fig.update_layout(**general_style)
         return fig
 
+    def getInvestmentSunburst(self, district=None, year=2015):
+        if not district:
+            district = "全国"
+        t = data[(data["地区"].str.contains(district)) & (data["年份"] == year)]
+        categories = ["资金来源", "资金用途", "建筑类型", "项目规模"]
+        labels = ["本年投资情况", "本年完成投资", "本年实际到位资金"] + ["按%s分" % e for e in categories]
+        parents = ["", "本年投资情况", "本年投资情况", "本年实际到位资金", "本年完成投资", "本年完成投资", "本年完成投资",]
+        values = [0] * len(labels)
+        for e in categories:
+            labels += self.keys[e]
+            parents += ["按%s分" % e] * len(self.keys[e])
+            values += [v for l in self.keys[e] for v in t[l]]
+
+        fig = go.Figure(go.Sunburst(labels=labels, parents=parents, values=values, ))
+        fig.update_traces(hoverinfo="label")
+        fig.update_layout(
+            height=400,
+            **general_style
+        )
+        return fig
+
     def getInvestmentTable(self, year=2020, district=None, name="项目规模"):
         if not district:
             district = "全国"
-        assert name in ["项目规模", "建筑类型"]
+        assert name in self.keys
 
         t = data[(data["地区"] == district) & (data["年份"] == year)]
 
@@ -676,10 +736,10 @@ class InvestmentPage():
                 i += 1
 
         fig = go.Figure(go.Table(
-            header=dict(values=[name, "投资额", "占比"]),
+            header=dict(values=[name, "金额", "占比"]),
             cells=dict(values=[keys, values, percentages]),
         ))
-        fig.update_layout(**general_style)
+        fig.update_layout(**general_style, height=200)
         return fig
 
     def getNewConstructionPie(self, year=2020, district=None):
@@ -701,9 +761,34 @@ class InvestmentPage():
         )
         return fig
 
+    def getConstructionTreemap(self, year=2020, district=None):
+        if not district:
+            district = "全国"
+        t = data[(data["地区"] == district) & (data["年份"] == year)]
+
+        labels = ["房地产开发企业施工房屋面积(万平方米)", "房地产开发企业竣工房屋面积(万平方米)", "房地产开发企业新开工房屋面积(万平方米)"]
+        parents = ["", "房地产开发企业施工房屋面积(万平方米)", "房地产开发企业施工房屋面积(万平方米)"]
+        values = [v for e in labels for v in t[e]]
+
+        keys = self.keys["房地产开发企业新开工房屋面积(万平方米)"]
+        labels += keys
+        parents += ["房地产开发企业新开工房屋面积(万平方米)"] * len(keys)
+        values += [v for e in keys for v in t[e]]
+
+        values[0] -= values[1] + values[2]
+        values[2] = 0
+
+        fig = go.Figure(go.Treemap(labels=labels, parents=parents, values=values,
+                                   marker_colors=["lightyellow", "lightblue", "red"] + ["lightred"] * 4))
+        fig.update_layout(
+            height=600,
+            **general_style
+        )
+        return fig
+
 
 if __name__ == '__main__':
-    print("\"", "\",\n\"".join(e for e in data.keys() if "销售面积" in e), "\"", sep="")
+    print("\"", "\",\n\"".join(e for e in data.keys() if "新开工" in e), "\"", sep="")
 
-    page = SalePage()
-    page.getAveragePriceBar().show()
+    page = InvestmentPage()
+    page.getConstructionTreemap().show()
