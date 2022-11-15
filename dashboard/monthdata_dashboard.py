@@ -240,8 +240,6 @@ import copy
 import re
 
 
-
-
 year_list=['2019','2020','2021','2022']
 
 
@@ -253,14 +251,21 @@ app.layout = html.Div([
             
             dbc.Row([
                 
-              dbc.Col([dbc.Row(
-                           #年份多选框
-                            dbc.Checklist(
-                                id="YearChecklist",
-                                options=[{"label": e, "value": e} for e in year_list],
-                                inline=True
-                            ),
+              dbc.Col([dbc.Row([dbc.Col(
+                  dcc.RangeSlider(2019, 2022, step=None, marks={
+        2019: '2019',
+        2020: '2020',
+        2021: '2021',
+        2022: '2022',
+        
+    },value=[2019, 2022], id='year-range-slider')
+                            #dbc.Checklist(
+                                #id="YearChecklist",
+                                #options=[{"label": e, "value": e} for e in year_list],
+                                ##inline=True
+                            #),
                         ),
+                        dbc.Col()]),
                     
                     dcc.Graph(
         id='fig_ts',
@@ -275,12 +280,19 @@ app.layout = html.Div([
             dbc.Row(children=[
                 
                 dbc.Col(children=[
-                    dbc.Row(
-                            dbc.Checklist(
-                                id="YearChecklist_fs",
-                                options=[{"label": e, "value": e} for e in year_list],
-                                inline=True
-                            ),
+                    dbc.Row([dbc.Col(
+                        dcc.RangeSlider(2019, 2022, step=None, marks={
+        2019: '2019',
+        2020: '2020',
+        2021: '2021',
+        2022: '2022',
+        
+    }, value=[2019, 2022],id='year-range-slider-fs')),dbc.Col()]
+                            #dbc.Checklist(
+                             #   id="YearChecklist_fs",
+                              #  options=[{"label": e, "value": e} for e in year_list],
+                               # inline=True
+                            #),
                         ),
                     
                     dcc.Graph(
@@ -290,7 +302,7 @@ app.layout = html.Div([
                 ),
                 dbc.Col(dcc.Graph(
         id='figtreemap',
-        figure=paint_fig_treemap()),width=3)]
+        figure=paint_figtreemap()),width=3)]
                 
             ))]),
            
@@ -299,28 +311,35 @@ app.layout = html.Div([
 ])
 @app.callback(
     Output("fig_ts", "figure"),   
-    Input("YearChecklist", "value")
+    Input("year-range-slider", "value")
         
     
 )
 def update_line_graph(years):
+    years_new=[]
     if not years:
-      return paint_fig_ts()
+      return paint_fig_fs()
     else:
+      for y in range(years[0],years[1]+1):
+          years_new.append(str(y))
       
-      return paint_fig_ts(years)
+      return paint_fig_ts(years_new)
+
 @app.callback(
     Output("fig_fs", "figure"),   
-    Input("YearChecklist_fs", "value")
+    Input("year-range-slider-fs", "value")
         
     
 )
 def update_bar_chart(years):
+    years_new=[]
     if not years:
       return paint_fig_fs()
     else:
+      for y in range(years[0],years[1]+1):
+          years_new.append(str(y))
       
-      return paint_fig_fs(years)
+      return paint_fig_fs(years_new)
 
 
 @app.callback(
@@ -329,7 +348,7 @@ def update_bar_chart(years):
 )
 def linkTreemapBarChart(hoverData): 
     # make a copy of the bar chart and color
-    updateTree = copy.deepcopy(paint_fig_treemap())
+    updateTree = copy.deepcopy(paint_figtreemap())
     updateColor = copy.deepcopy(colors)
     if hoverData is None:
       return updateTree
@@ -372,5 +391,4 @@ def linkTreemapBarChart(hoverData):
 
 
 # Run app and display result inline in the notebook
-if __name__ == '__main__':
-    app.run_server(mode='external')
+app.run_server(mode='external')
