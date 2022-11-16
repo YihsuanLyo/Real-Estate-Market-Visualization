@@ -17,7 +17,7 @@ import plotly.graph_objs as go
 
 
 #导入全国每月销售额数据
-df = pd.read_csv("dataset/monthly/total_sale_monthly_noaccu.csv")
+df = pd.read_csv("../dataset/monthly/total_sale_monthly_noaccu.csv")
 df.head(10)
 #去掉含有空值的数据行
 df.dropna(axis='index',how='any',inplace=True)
@@ -96,7 +96,7 @@ def paint_fig_ts(years=['2019','2020','2021','2022']):
 
 
 #导入全国每月完工面积数据
-df_f = pd.read_csv("dataset/monthly/Floor_space_completed_monthly_country.csv")
+df_f = pd.read_csv("../dataset/monthly/Floor_space_completed_monthly_country.csv")
 df_f.head(10)
 df_f.dropna(axis='index',how='any',inplace=True)
 df_f.head()
