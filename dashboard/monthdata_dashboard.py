@@ -11,13 +11,13 @@ Original file is located at
 
 #!pip install dash_bootstrap_components
 
-import plotly_express as px
+# import plotly_express as px
 import pandas as pd
 import plotly.graph_objs as go
 
 
 #导入全国每月销售额数据
-df = pd.read_csv("total_sale_monthly_noaccu.csv")
+df = pd.read_csv("dataset/monthly/total_sale_monthly_noaccu.csv")
 df.head(10)
 #去掉含有空值的数据行
 df.dropna(axis='index',how='any',inplace=True)
@@ -96,7 +96,7 @@ def paint_fig_ts(years=['2019','2020','2021','2022']):
 
 
 #导入全国每月完工面积数据
-df_f = pd.read_csv("Floor_space_completed_monthly_country.csv")
+df_f = pd.read_csv("dataset/monthly/Floor_space_completed_monthly_country.csv")
 df_f.head(10)
 df_f.dropna(axis='index',how='any',inplace=True)
 df_f.head()
@@ -302,7 +302,7 @@ app.layout = html.Div([
                 ),
                 dbc.Col(dcc.Graph(
         id='figtreemap',
-        figure=paint_figtreemap()),width=3)]
+        figure=paint_fig_treemap()),width=3)]
                 
             ))]),
            
@@ -348,7 +348,7 @@ def update_bar_chart(years):
 )
 def linkTreemapBarChart(hoverData): 
     # make a copy of the bar chart and color
-    updateTree = copy.deepcopy(paint_figtreemap())
+    updateTree = copy.deepcopy(paint_fig_treemap())
     updateColor = copy.deepcopy(colors)
     if hoverData is None:
       return updateTree
