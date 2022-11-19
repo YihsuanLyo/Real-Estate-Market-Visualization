@@ -1,62 +1,105 @@
 import dash
 import dash_bootstrap_components as dbc
-from dash import dcc, Input, Output
-from dash.exceptions import PreventUpdate
+from dash import Input, Output, dcc, html
 
 from figure import *
-
-building_type = ["内资", "国有", "集体", "港、澳、台投资", "外商投资"]
 
 app = dash.Dash(external_stylesheets=[dbc.themes.SPACELAB])
 developmentPage = DevelopmentPage()
 
 app.layout = dbc.Container([
     dbc.Card([
-        dbc.CardHeader("个数及平均从业人数"),
-        dbc.CardBody(
-            dbc.Row(
-                [
-                    dbc.Col([
-                        # dcc.Checklist(
-                        dbc.Row(
-                            dbc.Checklist(
-                                id="TypeChecklist",
-                                options=[{"label": e, "value": e} for e in building_type],
-                                inline=True
-                            ),
+        dbc.CardHeader(html.H4("Number of Enterprises for Real Estate Development and Average Employed Persons")),
+        dbc.CardBody([
+            dbc.Row([
+                dbc.Col([
+                    dbc.Row([
+                        dbc.Col(width=1),
+                        dbc.Col("Current District: China", id="LineDistrict", width=8),
+                        dbc.Col(dbc.Button("Reset", id="ResetButton", size="sm", style=dict(width=80)), width=3)
+                    ]),
+                    dbc.Row(dcc.Graph(id="LineChart", figure=developmentPage.getLineChart())),
+                ], width=6),
+                dbc.Col([
+                    dbc.Row(
+                        dbc.Checklist(
+                            id="TypeChecklist",
+                            options=[{"label": company_type[e], "value": e} for e in company_type],
+                            inline=True
                         ),
-                        dcc.Graph(id="LineChart", figure=developmentPage.getLineChart()),
-                    ], width=5),
-                    dbc.Col([
-                        dbc.Row(
-                            dbc.Switch(id='DescendingSwitch', value=True, label="Descending"),
-                        ),
-                        dbc.Row(dcc.Graph(id="BarChart", figure=developmentPage.getBarChart())),
-                    ], width=5),
-                    dbc.Col(dcc.Graph(id="PieChart", figure=developmentPage.getPieChart()), width=2),
-                ]
-            )
+                    ),
+                    dbc.Row([
+                        dbc.Col(width=9),
+                        dbc.Col(dbc.Switch(id='DescendingSwitch', value=True, label="Descending"), width=3)
+                    ]),
+                    dbc.Row(dcc.Graph(id="BarChart", figure=developmentPage.getBarChart())),
+                ], width=6),
+            ]),
+        ]),
+    ]),
+    html.Br(),
+    dbc.Card([
+        dbc.CardHeader(
+            dbc.Row([
+                dbc.Col([
+                    html.H4(
+                        "Assets and Liabilities of Enterprises for Real Estate Development"),
+                ], width=8),
+                dbc.Col(
+                    dcc.Dropdown(id="StackedDistrict",
+                                 options=[{"label": to_pinyin[convertProvince(e)], "value": convertProvince(e)}
+                                          for e in list(set(data["地区"]))],
+                                 value="全国", clearable=False),
+                    width={"size": 3, "offset": 1}
+                )
+            ])
         ),
-
-    ]),
-
-    dbc.Card([
-        dbc.CardHeader("StackedChart"),
         dbc.CardBody(dcc.Graph(id="StackedChart", figure=developmentPage.getStackedChart())),
+        dbc.CardFooter(html.Div("Total Assets = Owner's Equity + Total Liabilities; "
+                                "Assets Liabilities Rate = (Total Liabilities) / (Total Assets)",
+                                style=dict(fontSize=5)
+                                ))
     ]),
+    html.Br(),
     dbc.Card([
-        dbc.CardHeader("BubbleChart"),
+        dbc.CardHeader(html.H4("Income and Revenue of Enterprises for Real Estate Development")),
         dbc.CardBody(dcc.Graph(id="BubbleChart", figure=developmentPage.getBubbleChart())),
+        dbc.CardFooter(html.Div("In the bubble chart, the size of bubble indicates the total income;"
+                                "Revenue Rate = (Total Revenue) / (Total Income)",
+                                style=dict(fontSize=5)
+                                ))
     ]),
 
-    # dbc.Row([
-    #     dbc.Col
-    #     dbc.Col(dcc.Graph(id="BubbleChart", figure=developmentPage.getBubbleChart()), width=6),
-    # ]),
-
-    dbc.Row([
-    ]),
 ])
+
+button_click_cache = [0, []]
+
+
+@app.callback(
+    [Output("LineDistrict", "children"),
+     Output("LineChart", "figure")],
+    [Input("BarChart", "clickData"),
+     Input("TypeChecklist", "value"),
+     Input("ResetButton", "n_clicks")]
+)
+def updateLineChart(click_data, names, n_clicks):
+    if click_data and n_clicks == button_click_cache[0] and names == button_click_cache[-1]:
+        district = click_data["points"][0]["y"]
+    else:
+        button_click_cache[0] = n_clicks
+        button_click_cache[-1] = names
+        district = "China"
+    return ["Current District: " + district,
+            developmentPage.getLineChart(district=from_pinyin[district], names=button_click_cache[-1])]
+
+
+@app.callback(
+
+    Output("StackedChart", "figure"),
+    Input("StackedDistrict", "value")
+)
+def updateStackedChart(district):
+    return developmentPage.getStackedChart(district=district)
 
 
 @app.callback(
@@ -67,7 +110,7 @@ app.layout = dbc.Container([
         Input("DescendingSwitch", "value")
     ],
 )
-def update_bar_chart(hover_Data, building_types, descending):
+def updateBarChart(hover_Data, building_types, descending):
     if not hover_Data:
         return developmentPage.getBarChart(building_types=building_types, descending=descending)
 
@@ -78,47 +121,6 @@ def update_bar_chart(hover_Data, building_types, descending):
     return developmentPage.getBarChart(name=name, year=year,
                                        building_types=building_types,
                                        descending=descending)
-
-
-@app.callback(
-    Output("StackedChart", "figure"),
-    Input("BarChart", "hoverData")
-)
-def updateStackedChart(hover_data):
-    if not hover_data:
-        raise PreventUpdate
-    district = hover_data["points"][0]["y"]
-    for e in allDistricts():
-        if e.startswith(district):
-            district = e
-            break
-    return developmentPage.getStackedChart(district=district)
-
-
-@app.callback(
-    Output("LineChart", "figure"),
-    [Input("BarChart", "hoverData"),
-     Input("TypeChecklist", "value")]
-)
-def updateLineChart(hover_data, names):
-    district = hover_data["points"][0]["y"] if hover_data else "全国"
-    return developmentPage.getLineChart(district=district, names=names)
-
-
-pie_cache = ["全国", 2020, "房地产开发企业个数(个)"]
-@app.callback(
-    Output("PieChart", "figure"),
-    [Input("BarChart", "hoverData"),
-     Input("LineChart", "hoverData")]
-)
-def updatePieChart(bar_hover, line_hover):
-    if bar_hover:
-        pie_cache[0] = bar_hover["points"][0]["y"]
-    if line_hover:
-        pie_cache[1] = line_hover["points"][0]["x"]
-        pie_cache[2] = "房地产开发企业平均从业人数(人)" if line_hover["points"][0]["curveNumber"] else "房地产开发企业个数(个)"
-
-    return developmentPage.getPieChart(*pie_cache)
 
 
 if __name__ == '__main__':
