@@ -318,7 +318,7 @@ app.layout = html.Div([
 def update_line_graph(years):
     years_new=[]
     if not years:
-      return paint_fig_fs()
+      return paint_fig_ts()
     else:
       for y in range(years[0],years[1]+1):
           years_new.append(str(y))
