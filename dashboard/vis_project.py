@@ -7,11 +7,11 @@ Original file is located at
     https://colab.research.google.com/drive/1S8Gjjrokl99__Z0I3Q-QYJdI6HvSJyCU
 """
 
-!pip install plotly_express
+# !pip install plotly_express
 
 
 
-!pip install dash_bootstrap_components
+# !pip install dash_bootstrap_components
 
 import plotly_express as px
 import pandas as pd
@@ -247,8 +247,8 @@ def paint_figtreemap():
 
 paint_figtreemap().show()
 
-!pip install dash
-!pip install jupyter_dash
+# !pip install dash
+# !pip install jupyter_dash
 
 #这个单元是查看一下fig_fs的hoverdata是什么样子
 
