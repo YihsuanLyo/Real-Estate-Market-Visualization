@@ -3,7 +3,7 @@ import json
 import pandas as pd
 import plotly.graph_objects as go
 
-data = pd.read_excel("../year_data.xlsx", index_col=0)
+data = pd.read_excel("E:\msc cs hku\\visualization\\visualization\year_data.xlsx", index_col=0)
 general_style = dict(margin=dict(l=2, r=2, t=2, b=2), autosize=True)
 
 keys = {
